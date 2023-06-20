@@ -1,0 +1,369 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[ ]:
+
+
+import os
+import re
+import time
+import json
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+
+
+# In[ ]:
+
+
+# We may need this for a sanity check
+import sys
+
+
+# In[ ]:
+
+
+import pandas as pd
+import requests
+
+
+# In[ ]:
+
+
+# Here is the main DataFrame that everything will be concatenated to. 
+main_df = pd.DataFrame()
+
+main_df['Individual Words'] = []
+main_df['Word Count'] = []
+main_df['Candidate'] = []
+main_df['News Source'] = []
+
+
+# In[ ]:
+
+
+# This is for New York Times's journalists on Donald Trump
+main_df_trump_nyt = pd.DataFrame()
+
+main_df_trump_nyt['Individual Words'] = []
+main_df_trump_nyt['Word Count'] = []
+main_df_trump_nyt['Candidate'] = []
+main_df_trump_nyt['News Source'] = []
+
+#This is for New York Times's journalists on Joe Biden
+main_df_biden_nyt = pd.DataFrame()
+
+main_df_biden_nyt['Individual Words'] = []
+main_df_biden_nyt['Word Count'] = []
+main_df_biden_nyt['Candidate'] = []
+main_df_biden_nyt['News Source'] = []
+
+
+# In[ ]:
+
+
+# NYT is the New York Times - a more liberal news source
+nyt_api_key = 'ENTER YOUR KEY HERE'
+# conservative_api_key is for a more Republican news source - I will choose Fox News
+conservative_api_key = 'ENTER YOUR KEY HERE'
+
+
+# In[ ]:
+
+
+# The first runthrough of the code is Donald Trump NYT. Name it accordingly. 
+
+SAVED_RESPONSES_PATH = input("") + ".json"
+
+
+# In[ ]:
+
+
+def all_nyt(candidate):
+
+    def request_nyt_data(candidate, n_requests=1):
+        results = []
+        for number in range(n_requests):
+            nyt_request = requests.get(f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={candidate}&api-key={nyt_api_key}&page={number}')
+            nyt_content = nyt_request.content
+            results.append(json.loads(nyt_content))
+        
+            time.sleep(12)  # NYT rate-limiting allows 5 requests per minute, 60/5 = 12
+        
+        return results
+    
+
+    def get_word_count(result, counter=None):
+    
+        counter = dict() if counter is None else counter
+        pattern = r"(\w+)"
+    
+        for doc in (result['response']['docs']):
+            for word in re.findall(pattern, doc['abstract']):
+                if counter.get(word) is not None:
+                    counter[word] += 1
+                else:
+                    counter[word] = 1
+        
+        return counter
+
+
+    if __name__ == '__main__':
+    
+        # Load saved responses from a JSON file if it exists; otherwise, request the data from NYT and save it.
+        if os.path.exists(SAVED_RESPONSES_PATH):
+            with open(SAVED_RESPONSES_PATH) as f:
+                responses = json.load(f)
+        else:
+            responses = request_nyt_data(candidate, 99)
+            with open(SAVED_RESPONSES_PATH, 'w') as f:
+                json.dump(responses, f)
+
+
+    counter = dict()
+    for r in responses:
+        get_word_count(r, counter)
+
+    df = pd.DataFrame.from_dict(counter, orient='index')
+    df = df.reset_index()
+    df.rename(columns = {'index': 'Individual Words', 0: 'Word Count'}, inplace=True)
+    df['Candidate'] = candidate
+    df['News Source'] = 'New York Times'
+    
+    return df
+
+
+# In[ ]:
+
+
+to_concatenate = all_nyt(candidate = 'Donald Trump')
+
+main_df_trump_nyt = pd.concat([main_df_trump_nyt, to_concatenate], ignore_index = True)
+
+main_df_trump_nyt
+
+
+# In[ ]:
+
+
+# This is the same variable as above, but you want to perhaps create a new .JSON file name 
+# for the other candidate you choose
+
+# The next runthrough of the code is Joe Biden NYT. Name it accordingly. 
+
+SAVED_RESPONSES_PATH = input("") + ".json"
+
+
+# In[ ]:
+
+
+to_concatenate = all_nyt(candidate = 'Joe Biden')
+
+main_df_biden_nyt = pd.concat([main_df_biden_nyt, to_concatenate], ignore_index = True)
+
+main_df_biden_nyt
+
+
+# In[ ]:
+
+
+main_df = pd.concat([main_df_trump_nyt, main_df_biden_nyt], ignore_index = True)
+
+
+# In[ ]:
+
+
+#Let's move on to our conservative News Source Fox News
+
+
+# In[ ]:
+
+
+# This is Fox News's take on Donald Trump
+main_df_trump_fox = pd.DataFrame()
+
+main_df_trump_fox['Individual Words'] = []
+main_df_trump_fox['Word Count'] = []
+main_df_trump_fox['Candidate'] = []
+main_df_trump_fox['News Source'] = []
+
+# This is Fox News's take on Joe Biden
+main_df_biden_fox = pd.DataFrame()
+
+main_df_biden_fox['Individual Words'] = []
+main_df_biden_fox['Word Count'] = []
+main_df_biden_fox['Candidate'] = []
+main_df_biden_fox['News Source'] = []
+
+
+# In[ ]:
+
+
+# The first runthrough is Donald Trump Fox News. Name it accordingly. 
+
+SAVED_RESPONSES_PATH_TWO = input("") + ".json"
+
+
+# In[ ]:
+
+
+def all_fox(candidate):
+
+    def request_fox_data(candidate, n_requests = 4000):
+        fox_results = []
+        for number in range(n_requests):
+            fox_news_request = requests.get((f'https://newsapi.org/v2/everything?q={candidate}&domains=foxnews.com&apiKey={conservative_api_key}&page={n_requests}'))
+            fox_news_content = fox_news_request.content
+            fox_results.append(json.loads(fox_news_content))
+        
+            time.sleep(1) # News API rate-limiting allows 60 requests per minute, 60/60 = 1
+        
+        return fox_results
+
+    def get_word_count_two(fox_result, counter_two = None):
+    
+        counter_two = dict() if counter_two is None else counter_two
+        pattern = r"(\w+)"
+        
+        for doc in (fox_result['articles']):
+            for word in re.findall(pattern, doc['description']):
+                if counter_two.get(word) is not None:
+                    counter_two[word] += 1
+                else:
+                    counter_two[word] = 1
+
+    if __name__ == '__main__':
+        
+        # Load saved responses from a JSON file if it exists; otherwise, request the data from News API and save it.
+        if os.path.exists(SAVED_RESPONSES_PATH_TWO):
+            with open(SAVED_RESPONSES_PATH_TWO) as f:
+                fox_responses = json.load(f)
+        else:
+            fox_responses = request_fox_data(candidate, 1)
+            with open(SAVED_RESPONSES_PATH_TWO, 'w') as f:
+                json.dump(fox_responses, f)
+            
+    counter_two = dict()
+    for r in fox_responses:
+        get_word_count_two(r, counter_two)
+    
+    second_df = pd.DataFrame.from_dict(counter_two, orient='index')
+
+    second_df = second_df.reset_index()
+    second_df.rename(columns = {'index': 'Individual Words', 0: 'Word Count'}, inplace=True)
+    second_df['Candidate'] = candidate
+    second_df['News Source'] = 'Fox News'
+
+    return second_df
+    
+
+
+# In[ ]:
+
+
+to_concatenate_two = all_fox(candidate = 'Donald Trump')
+
+main_df_trump_fox = pd.concat([main_df_trump_fox, to_concatenate_two], ignore_index = True)
+
+main_df_trump_fox
+
+
+# In[ ]:
+
+
+# This is the same variable as above, but you want to perhaps create a new .JSON file name 
+# for the other candidate you choose
+
+# This next runthrough is Joe Biden Fox News. Name it accordingly.
+
+SAVED_RESPONSES_PATH_TWO = input("") + ".json"
+
+
+# In[ ]:
+
+
+to_concatenate_two = all_fox(candidate = 'Joe Biden')
+
+main_df_biden_fox = pd.concat([main_df_biden_fox, to_concatenate_two], ignore_index = True)
+
+main_df_biden_fox
+
+
+# In[ ]:
+
+
+combining_both_data_sets = pd.DataFrame()
+
+
+# In[ ]:
+
+
+combining_both_data_sets = pd.concat([main_df_biden_fox, main_df_trump_fox], ignore_index = True)
+
+
+# In[ ]:
+
+
+main_df = pd.concat([main_df, combining_both_data_sets], ignore_index = True)
+
+
+# In[ ]:
+
+
+main_df
+
+
+# In[ ]:
+
+
+main_df.sort_values(['Word Count'],
+              ascending = [False], inplace = True)
+
+
+# In[ ]:
+
+
+main_df
+
+
+# In[ ]:
+
+
+main_df = main_df.reset_index()
+
+
+# In[ ]:
+
+
+main_df.drop(columns = ['index'], axis = 0, inplace=True)
+
+
+# In[ ]:
+
+
+main_df
+
+
+# In[ ]:
+
+
+# Let's make a Word Cloud of the Data!!!
+
+
+# In[ ]:
+
+
+# Generate the word cloud
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(' '.join(main_df['Individual Words']))
+
+# Display the word cloud using matplotlib
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.show()
+
+
+# In[ ]:
+
+
+main_df.to_csv(".csv")
+
