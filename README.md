@@ -1,7 +1,7 @@
 # NewsWebScraping
 I web scraped The New York Times and Fox News using Python to assess journalist sentiment regarding major political candidates. 
 
-Shout out to Peter Kritikos for helping me write this code. He brilliantly constructed the function all_nyt(candidate) and then I was able to use his knowledge on my own time, to construct the all_fox(candidate) function. 
+Shout out to Peter Kritikos for helping me write this code. He brilliantly constructed the function all_nyt(candidate) (using the Regex I created) and then I was able to use his knowledge on my own time, to construct the all_fox(candidate) function. 
 
 Peter has been a Senior Software Developer at a multitude of companies for many years and has worked professionally in the field for 10 years. For a portion of his career he worked at Meta. 
 
